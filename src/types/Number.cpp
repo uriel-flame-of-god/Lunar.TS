@@ -259,3 +259,10 @@ void Number::doubleToString(double value, char* buffer) const {
     int32_t int_part = (int32_t)value;
     intToString(int_part, buffer);
 }
+
+int32_t Number::toInt() const {
+    if (type_tag == 0) {
+        return int_val;
+    }
+    return (int32_t)float_val;
+}

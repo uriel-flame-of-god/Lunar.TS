@@ -1,0 +1,239 @@
+#include "console.hpp"
+#include "../types/Number.hpp"
+#include "../types/Boolean.hpp"
+#include "../types/Char.hpp"
+#include "../types/Strings.hpp"  // Add this include
+#include "memory.hpp"
+#include <stdio.h>
+
+namespace Luna {
+namespace Console {
+
+void log(const char* message) {
+    printf("\033[0m%s\033[0m\n", message); // Reset colors, print, reset again
+}
+
+void warn(const char* message) {
+    printf("\033[43m\033[37m[WARN] %s\033[0m\n", message); // Yellow bg, white text
+}
+
+void error(const char* message) {
+    printf("\033[41m\033[37m[ERROR] %s\033[0m\n", message); // Red bg, white text
+}
+
+void table(Array* data, Array* headers) {
+    if (!data || data->isEmpty()) {
+        warn("Table data is empty");
+        return;
+    }
+
+    // Calculate column widths
+    Array* colWidths = new Array();
+    
+    // If headers provided, use them for width calculation
+    if (headers && !headers->isEmpty()) {
+        for (size_t i = 0; i < headers->getLength(); i++) {
+            char* headerStr = valueToString(headers->get(i));
+            size_t width = Luna::string::length(headerStr);  // Use string::length
+            colWidths->push(new Number((int32_t)(width + 2))); // +2 for padding
+            if (headerStr) Memory::deallocate(headerStr);
+        }
+    }
+    
+    // Calculate max widths from data
+    for (size_t row = 0; row < data->getLength(); row++) {
+        Array* rowData = (Array*)data->get(row);
+        if (!rowData) continue;
+        
+        for (size_t col = 0; col < rowData->getLength(); col++) {
+            char* cellStr = valueToString(rowData->get(col));
+            size_t width = Luna::string::length(cellStr);  // Use string::length
+            
+            if (col >= colWidths->getLength()) {
+                colWidths->push(new Number((int32_t)(width + 2)));
+            } else {
+                Number* currentWidth = (Number*)colWidths->get(col);
+                if (width + 2 > (size_t)currentWidth->toInt()) {
+                    colWidths->set(col, new Number((int32_t)(width + 2)));
+                    delete currentWidth;
+                }
+            }
+            if (cellStr) Memory::deallocate(cellStr);
+        }
+    }
+
+    // Print table border
+    printf("┌");
+    for (size_t i = 0; i < colWidths->getLength(); i++) {
+        Number* width = (Number*)colWidths->get(i);
+        for (int j = 0; j < width->toInt(); j++) {
+            printf("─");
+        }
+        if (i < colWidths->getLength() - 1) printf("┬");
+    }
+    printf("┐\n");
+
+    // Print headers if provided
+    if (headers && !headers->isEmpty()) {
+        printf("│");
+        for (size_t i = 0; i < headers->getLength(); i++) {
+            if (i < colWidths->getLength()) {
+                char* headerStr = valueToString(headers->get(i));
+                Number* width = (Number*)colWidths->get(i);
+                printf(" %s", headerStr ? headerStr : "NULL");
+                
+                // Padding
+                size_t currentLen = Luna::string::length(headerStr);  // Use string::length
+                for (size_t j = currentLen + 1; j < (size_t)width->toInt(); j++) {
+                    printf(" ");
+                }
+                printf("│");
+                if (headerStr) Memory::deallocate(headerStr);
+            }
+        }
+        printf("\n");
+
+        // Print separator
+        printf("├");
+        for (size_t i = 0; i < colWidths->getLength(); i++) {
+            Number* width = (Number*)colWidths->get(i);
+            for (int j = 0; j < width->toInt(); j++) {
+                printf("─");
+            }
+            if (i < colWidths->getLength() - 1) printf("┼");
+        }
+        printf("┤\n");
+    }
+
+    // Print data rows
+    for (size_t row = 0; row < data->getLength(); row++) {
+        printf("│");
+        Array* rowData = (Array*)data->get(row);
+        if (rowData) {
+            for (size_t col = 0; col < rowData->getLength(); col++) {
+                if (col < colWidths->getLength()) {
+                    char* cellStr = valueToString(rowData->get(col));
+                    Number* width = (Number*)colWidths->get(col);
+                    printf(" %s", cellStr ? cellStr : "NULL");
+                    
+                    // Padding
+                    size_t currentLen = Luna::string::length(cellStr);  // Use string::length
+                    for (size_t j = currentLen + 1; j < (size_t)width->toInt(); j++) {
+                        printf(" ");
+                    }
+                    printf("│");
+                    if (cellStr) Memory::deallocate(cellStr);
+                }
+            }
+        }
+        printf("\n");
+    }
+
+    // Print bottom border
+    printf("└");
+    for (size_t i = 0; i < colWidths->getLength(); i++) {
+        Number* width = (Number*)colWidths->get(i);
+        for (int j = 0; j < width->toInt(); j++) {
+            printf("─");
+        }
+        if (i < colWidths->getLength() - 1) printf("┴");
+    }
+    printf("┘\n");
+
+    // Cleanup
+    for (size_t i = 0; i < colWidths->getLength(); i++) {
+        delete (Number*)colWidths->get(i);
+    }
+    delete colWidths;
+}
+
+void logMultiple(Array* args) {
+    if (!args || args->isEmpty()) {
+        log("");
+        return;
+    }
+
+    for (size_t i = 0; i < args->getLength(); i++) {
+        char* str = valueToString(args->get(i));
+        if (i > 0) printf(" ");
+        printf("%s", str ? str : "NULL");
+        if (str) Memory::deallocate(str);
+    }
+    printf("\n");
+}
+
+char* valueToString(void* value) {
+    if (!value) {
+        char* nullStr = (char*)Memory::allocate(5);
+        nullStr[0] = 'N'; nullStr[1] = 'U'; nullStr[2] = 'L'; nullStr[3] = 'L'; nullStr[4] = '\0';
+        return nullStr;
+    }
+
+    // Try to detect type and convert accordingly
+    // This is a simplified approach - in a real system you'd have proper type checking
+    
+    // Check if it's a Number
+    Number* num = reinterpret_cast<Number*>(value);
+    char* numStr = num->toString();
+    if (numStr && numStr[0] != 'N') { // Not NULL and not starting with N (could be NaN)
+        return numStr;
+    }
+    if (numStr) Memory::deallocate(numStr);
+
+    // Check if it's a Boolean
+    Boolean* boolVal = reinterpret_cast<Boolean*>(value);
+    char* boolStr = boolVal->toString();
+    if (boolStr && (boolStr[0] == 'T' || boolStr[0] == 'F')) {
+        return boolStr;
+    }
+    if (boolStr) Memory::deallocate(boolStr);
+
+    // Check if it's a Char
+    Char* charVal = reinterpret_cast<Char*>(value);
+    char* charStr = charVal->toString();
+    if (charStr) {
+        return charStr;
+    }
+
+    // Check if it's an Array
+    Array* arrayVal = reinterpret_cast<Array*>(value);
+    if (arrayVal) {
+        char* arrayStr = (char*)Memory::allocate(32);
+        arrayStr[0] = '[';
+        size_t pos = 1;
+        
+        for (size_t i = 0; i < arrayVal->getLength() && pos < 30; i++) {
+            if (i > 0) {
+                arrayStr[pos++] = ',';
+                arrayStr[pos++] = ' ';
+            }
+            
+            char* elementStr = valueToString(arrayVal->get(i));
+            if (elementStr) {
+                size_t j = 0;
+                while (elementStr[j] != '\0' && pos < 30) {
+                    arrayStr[pos++] = elementStr[j++];
+                }
+                Memory::deallocate(elementStr);
+            }
+        }
+        
+        arrayStr[pos++] = ']';
+        arrayStr[pos] = '\0';
+        return arrayStr;
+    }
+
+    // Check if it's a std::string
+    Luna::std::string* strVal = reinterpret_cast<Luna::std::string*>(value);
+    if (strVal) {
+        return Luna::string::duplicate(strVal->c_str());  // Use string::duplicate
+    }
+
+    // Fallback: pointer address
+    char* fallback = (char*)Memory::allocate(20);
+    snprintf(fallback, 19, "[object %p]", value);
+    return fallback;
+}
+
+} // namespace Console
+} // namespace Luna

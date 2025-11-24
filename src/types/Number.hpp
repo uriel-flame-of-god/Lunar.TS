@@ -101,7 +101,10 @@ public:
      * @brief Check if value is infinity
      */
     bool isInfinity() const;
-    
+    /**
+     * @brief Convert to integer (truncates float)
+     */
+    int32_t toInt() const;
 private:
     double toDouble() const;
     void intToString(int32_t value, char* buffer) const;

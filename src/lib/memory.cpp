@@ -1,5 +1,5 @@
 #include "memory.hpp"
-
+#include <cstdlib>
 namespace Luna {
 namespace Memory {
 
@@ -55,13 +55,12 @@ void* allocate(size_t size) {
 #ifdef LUNA_USE_STDLIB
     ptr = ::operator new(size);
 #else
-    // Simplified non-stdlib allocation for testing
-    // In a real implementation, you'd have a proper memory manager
+    // TEMPORARY FIX: Use malloc instead of __builtin_alloca
+    // This fixes the O2 optimization crash while we focus on other features
+    // We'll replace this with a proper custom allocator later
     if (size == 0) return nullptr;
     
-    // Use system malloc for testing purposes
-    // This prevents the segfaults from the broken custom allocator
-    ptr = (void*)((size_t)__builtin_alloca(size));
+    ptr = malloc(size);  // FIXED: Use heap allocation instead of stack
     
     if (ptr) {
         g_memory_manager.total_allocated += size;
@@ -80,8 +79,8 @@ void deallocate(void* ptr) {
 #ifdef LUNA_USE_STDLIB
     ::operator delete(ptr);
 #else
-    // For non-stdlib, we're using alloca so no deallocation needed
-    __asm__ volatile ("" :: "r" (ptr) : "memory");
+    // FIXED: Use free to match malloc
+    free(ptr);  // Now we actually deallocate the memory
 #endif
 }
 
@@ -95,11 +94,15 @@ void* reallocate(void* ptr, size_t new_size) {
 #ifdef LUNA_USE_STDLIB
     return ::operator new[](new_size);
 #else
-    void* new_ptr = allocate(new_size);
-    if (new_ptr && ptr) {
-        // Use our copy function
-        copy(new_ptr, ptr, new_size);
-        deallocate(ptr);
+    // FIXED: Use realloc for proper reallocation
+    void* new_ptr = realloc(ptr, new_size);
+    if (new_ptr) {
+        // Update allocation tracking
+        // Note: This is approximate since we don't know the old size
+        g_memory_manager.total_allocated += new_size;
+        if (g_memory_manager.total_allocated > g_memory_manager.peak_allocated) {
+            g_memory_manager.peak_allocated = g_memory_manager.total_allocated;
+        }
     }
     return new_ptr;
 #endif
