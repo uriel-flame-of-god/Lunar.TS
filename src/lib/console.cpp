@@ -169,40 +169,63 @@ char* valueToString(void* value) {
         return nullStr;
     }
 
-    // Try to detect type and convert accordingly
-    // This is a simplified approach - in a real system you'd have proper type checking
+    // Without RTTI, we use a heuristic approach
+    // We'll try each type and validate the result
     
-    // Check if it's a Number
-    Number* num = reinterpret_cast<Number*>(value);
-    char* numStr = num->toString();
-    if (numStr && numStr[0] != 'N') { // Not NULL and not starting with N (could be NaN)
-        return numStr;
-    }
-    if (numStr) Memory::deallocate(numStr);
-
-    // Check if it's a Boolean
+    // Try Boolean first (smallest, most constrained)
     Boolean* boolVal = reinterpret_cast<Boolean*>(value);
     char* boolStr = boolVal->toString();
-    if (boolStr && (boolStr[0] == 'T' || boolStr[0] == 'F')) {
-        return boolStr;
+    if (boolStr) {
+        // Check if it's a valid boolean string
+        bool isTrue = (boolStr[0] == 'T' && boolStr[1] == 'r' && boolStr[2] == 'u' && boolStr[3] == 'e' && boolStr[4] == '\0');
+        bool isFalse = (boolStr[0] == 'F' && boolStr[1] == 'a' && boolStr[2] == 'l' && boolStr[3] == 's' && boolStr[4] == 'e' && boolStr[5] == '\0');
+        if (isTrue || isFalse) {
+            return boolStr;
+        }
+        Memory::deallocate(boolStr);
     }
-    if (boolStr) Memory::deallocate(boolStr);
-
-    // Check if it's a Char
+    
+    // Try Char (also small and constrained)
     Char* charVal = reinterpret_cast<Char*>(value);
     char* charStr = charVal->toString();
     if (charStr) {
-        return charStr;
+        // Char toString always returns a 2-character string (char + null)
+        if (charStr[0] != '\0' && charStr[1] == '\0') {
+            // Valid single character string
+            return charStr;
+        }
+        Memory::deallocate(charStr);
+    }
+    
+    // Try Number
+    Number* num = reinterpret_cast<Number*>(value);
+    char* numStr = num->toString();
+    if (numStr) {
+        // Number strings are digits, negative sign, or special values
+        bool validNumber = false;
+        if (numStr[0] == 'N' && numStr[1] == 'a' && numStr[2] == 'N' && numStr[3] == '\0') {
+            validNumber = true; // NaN
+        } else if (numStr[0] == 'I' || (numStr[0] == '-' && numStr[1] == 'I')) {
+            validNumber = true; // Infinity or -Infinity
+        } else if (numStr[0] == '-' || (numStr[0] >= '0' && numStr[0] <= '9')) {
+            validNumber = true; // Regular number
+        }
+        
+        if (validNumber) {
+            return numStr;
+        }
+        Memory::deallocate(numStr);
     }
 
-    // Check if it's an Array
+    // Try Array (check if getLength works reasonably)
     Array* arrayVal = reinterpret_cast<Array*>(value);
-    if (arrayVal) {
+    size_t len = arrayVal->getLength();
+    if (len < 10000) { // Sanity check - arrays shouldn't be huge in our tests
         char* arrayStr = (char*)Memory::allocate(32);
         arrayStr[0] = '[';
         size_t pos = 1;
         
-        for (size_t i = 0; i < arrayVal->getLength() && pos < 30; i++) {
+        for (size_t i = 0; i < len && i < 3 && pos < 30; i++) {
             if (i > 0) {
                 arrayStr[pos++] = ',';
                 arrayStr[pos++] = ' ';
@@ -211,22 +234,22 @@ char* valueToString(void* value) {
             char* elementStr = valueToString(arrayVal->get(i));
             if (elementStr) {
                 size_t j = 0;
-                while (elementStr[j] != '\0' && pos < 30) {
+                while (elementStr[j] != '\0' && pos < 28) {
                     arrayStr[pos++] = elementStr[j++];
                 }
                 Memory::deallocate(elementStr);
             }
         }
         
+        if (len > 3) {
+            arrayStr[pos++] = '.';
+            arrayStr[pos++] = '.';
+            arrayStr[pos++] = '.';
+        }
+        
         arrayStr[pos++] = ']';
         arrayStr[pos] = '\0';
         return arrayStr;
-    }
-
-    // Check if it's a std::string
-    Luna::std::string* strVal = reinterpret_cast<Luna::std::string*>(value);
-    if (strVal) {
-        return Luna::string::duplicate(strVal->c_str());  // Use string::duplicate
     }
 
     // Fallback: pointer address

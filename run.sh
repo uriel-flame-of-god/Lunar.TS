@@ -8,55 +8,61 @@ echo "Project dir: $PROJECT_DIR"
 echo "Build dir: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 echo ""
-echo "[1/10] Compiling memory.cpp..."
+echo "[1/11] Compiling memory.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/lib/memory.cpp" \
     -o "$BUILD_DIR/memory.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[2/10] Compiling Number.cpp..."
+echo "[2/11] Compiling Number.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/types/Number.cpp" \
     -o "$BUILD_DIR/Number.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[3/10] Compiling Boolean.cpp..."
+echo "[3/11] Compiling Boolean.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/types/Boolean.cpp" \
     -o "$BUILD_DIR/Boolean.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[4/10] Compiling Array.cpp..."
+echo "[4/11] Compiling Array.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/types/Array.cpp" \
     -o "$BUILD_DIR/Array.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[5/10] Compiling Char.cpp..."
+echo "[5/11] Compiling Char.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/types/Char.cpp" \
     -o "$BUILD_DIR/Char.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[6/10] Compiling Strings.cpp..."
+echo "[6/11] Compiling Strings.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/types/Strings.cpp" \
     -o "$BUILD_DIR/Strings.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[7/10] Compiling console.cpp..."
+echo "[7/11] Compiling console.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/lib/console.cpp" \
     -o "$BUILD_DIR/console.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[8/10] Compiling main.cpp..."
+echo "[8/11] Compiling math.cpp..."
+g++ -c -O2 -march=x86-64 -fno-exceptions \
+    "$PROJECT_DIR/src/lib/math.cpp" \
+    -o "$BUILD_DIR/math.o" \
+    -I"$PROJECT_DIR/src" \
+    2>&1
+echo "[9/11] Compiling main.cpp..."
 g++ -c -O2 -march=x86-64 -fno-exceptions \
     "$PROJECT_DIR/src/main.cpp" \
     -o "$BUILD_DIR/main.o" \
     -I"$PROJECT_DIR/src" \
     2>&1
-echo "[9/10] Linking executable..."
+echo "[10/11] Linking executable..."
 g++ -O2 -fno-exceptions \
     "$BUILD_DIR/memory.o" \
     "$BUILD_DIR/Number.o" \
@@ -65,10 +71,11 @@ g++ -O2 -fno-exceptions \
     "$BUILD_DIR/Char.o" \
     "$BUILD_DIR/Strings.o" \
     "$BUILD_DIR/console.o" \
+    "$BUILD_DIR/math.o" \
     "$BUILD_DIR/main.o" \
     -o "$OUTPUT" \
     2>&1
-echo "[10/10] Running tests..."
+echo "[11/11] Running tests..."
 echo ""
 if [ -f "$OUTPUT" ]; then
     "$OUTPUT"

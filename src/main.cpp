@@ -5,6 +5,7 @@
 #include "lib/memory.hpp"
 #include "lib/console.hpp"
 #include "types/Strings.hpp"
+#include "lib/math.hpp"
 #include <stdio.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -434,7 +435,7 @@ void testArray() {
     printLine("\n[Basic Operations]");
     runProtectedTest("Array construction", []() -> bool {
         Array arr;
-        return arr.getLength() == 0 && !arr.isEmpty();
+        return arr.getLength() == 0 && arr.isEmpty();
     });
     
     runProtectedTest("Array push and get", []() -> bool {
@@ -726,7 +727,7 @@ void testIntegration() {
         return result;
     });
 }
-// Add this function to main.cpp
+
 void testConsole() {
     printLine("\n=== Console Tests ===");
     
@@ -908,6 +909,137 @@ void testStrings() {
                s.substr(0, 5) == "Hello";
     });
 }
+
+// Add math tests
+void testMath() {
+    printLine("\n=== Math Library Tests ===");
+    
+    printLine("\n[Standard Math Functions]");
+    runProtectedTest("sin(0) = 0", []() -> bool {
+        Number result = Luna::Math::sin(Number(0));
+        return result.equals(Number(0));
+    });
+    
+    runProtectedTest("cos(0) = 1", []() -> bool {
+        Number result = Luna::Math::cos(Number(0));
+        return result.equals(Number(1));
+    });
+    
+    runProtectedTest("tan(0) = 0", []() -> bool {
+        Number result = Luna::Math::tan(Number(0));
+        return result.equals(Number(0));
+    });
+    
+    runProtectedTest("sqrt(4) = 2", []() -> bool {
+        Number result = Luna::Math::sqrt(Number(4));
+        return result.equals(Number(2));
+    });
+    
+    runProtectedTest("pow(2, 3) = 8", []() -> bool {
+        Number result = Luna::Math::pow(Number(2), Number(3));
+        return result.equals(Number(8));
+    });
+    
+    runProtectedTest("log(e) ~= 1", []() -> bool {
+        Number result = Luna::Math::log(Number(2.71828)); // Approximate e
+        return result.greaterThan(Number(0.999)) && result.lessThan(Number(1.001));
+    });
+    
+    printLine("\n[Math Constants]");
+    runProtectedTest("PI constant", []() -> bool {
+        return Luna::Math::constants::PI > 3.14159 && Luna::Math::constants::PI < 3.14160;
+    });
+    
+    runProtectedTest("E constant", []() -> bool {
+        return Luna::Math::constants::E > 2.71828 && Luna::Math::constants::E < 2.71829;
+    });
+    
+    printLine("\n[Symbolic Math - Basic]");
+    runProtectedTest("Symbol creation", []() -> bool {
+        Luna::Math::Symbol x("x");
+        char* str = x.toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "x") == 0);
+        if (str) Luna::Memory::deallocate(str);
+        return result;
+    });
+    
+    runProtectedTest("Constant creation", []() -> bool {
+        Luna::Math::Constant five(5);
+        char* str = five.toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "5") == 0);
+        if (str) Luna::Memory::deallocate(str);
+        return result;
+    });
+    
+    runProtectedTest("Symbol evaluation", []() -> bool {
+        Luna::Math::Symbol x("x");
+        Array vars;
+        vars.push(&x);
+        vars.push(new Number(42));
+        Number result = x.evaluate(vars);
+        
+        // Cleanup
+        delete (Number*)vars.get(1);
+        return result.equals(Number(42));
+    });
+    
+    printLine("\n[Symbolic Math - Differentiation]");
+    runProtectedTest("Derivative of constant", []() -> bool {
+        Luna::Math::Constant five(5);
+        Luna::Math::SymbolicExpr* derivative = five.diff("x");
+        char* str = derivative->toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "0") == 0);
+        
+        if (str) Luna::Memory::deallocate(str);
+        Luna::Math::symbolic::free(derivative);
+        return result;
+    });
+    
+    runProtectedTest("Derivative of x", []() -> bool {
+        Luna::Math::Symbol x("x");
+        Luna::Math::SymbolicExpr* derivative = x.diff("x");
+        char* str = derivative->toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "1") == 0);
+        
+        if (str) Luna::Memory::deallocate(str);
+        Luna::Math::symbolic::free(derivative);
+        return result;
+    });
+    
+    printLine("\n[Symbolic Math - Simplification]");
+    runProtectedTest("Simplify x + 0", []() -> bool {
+        Luna::Math::Symbol x("x");
+        Luna::Math::Constant zero(0);
+        Luna::Math::BinaryOp add(Luna::Math::BinaryOp::Operation::ADD, 
+                                new Luna::Math::Symbol(x), 
+                                new Luna::Math::Constant(zero));
+        
+        Luna::Math::SymbolicExpr* simplified = add.simplify();
+        char* str = simplified->toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "x") == 0);
+        
+        if (str) Luna::Memory::deallocate(str);
+        Luna::Math::symbolic::free(simplified);
+        return result;
+    });
+    
+    runProtectedTest("Simplify x * 1", []() -> bool {
+        Luna::Math::Symbol x("x");
+        Luna::Math::Constant one(1);
+        Luna::Math::BinaryOp multiply(Luna::Math::BinaryOp::Operation::MULTIPLY, 
+                                     new Luna::Math::Symbol(x), 
+                                     new Luna::Math::Constant(one));
+        
+        Luna::Math::SymbolicExpr* simplified = multiply.simplify();
+        char* str = simplified->toString();
+        bool result = (str != nullptr && Luna::string::compare(str, "x") == 0);
+        
+        if (str) Luna::Memory::deallocate(str);
+        Luna::Math::symbolic::free(simplified);
+        return result;
+    });
+}
+
 int main() {
     // Set up signal handlers that will re-register themselves
     signal(SIGSEGV, crash_handler);
@@ -987,6 +1119,7 @@ int main() {
         printf("\n[ERROR] testIntegration() suite crashed with signal %d - continuing...\n\n", suite_sig);
         signal(suite_sig, crash_handler);
     }
+    
     suite_sig = setjmp(recovery_point);
     if (suite_sig == 0) {
         in_protected_block = 1;
@@ -997,6 +1130,7 @@ int main() {
         printf("\n[ERROR] testConsole() suite crashed with signal %d - continuing...\n\n", suite_sig);
         signal(suite_sig, crash_handler);
     }
+    
     suite_sig = setjmp(recovery_point);
     if (suite_sig == 0) {
         in_protected_block = 1;
@@ -1007,6 +1141,18 @@ int main() {
         printf("\n[ERROR] testStrings() suite crashed with signal %d - continuing...\n\n", suite_sig);
         signal(suite_sig, crash_handler);
     }
+    
+    suite_sig = setjmp(recovery_point);
+    if (suite_sig == 0) {
+        in_protected_block = 1;
+        testMath();
+        in_protected_block = 0;
+    } else {
+        in_protected_block = 0;
+        printf("\n[ERROR] testMath() suite crashed with signal %d - continuing...\n\n", suite_sig);
+        signal(suite_sig, crash_handler);
+    }
+    
     printLine("\n=== All Tests Complete ===");
     
     Luna::Memory::shutdown();
